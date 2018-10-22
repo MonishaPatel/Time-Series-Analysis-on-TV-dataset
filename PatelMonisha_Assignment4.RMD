@@ -1,0 +1,214 @@
+---
+title: "Time Series Analysis on TV viewers Dataset"
+author: "Monisha Patel"
+date: "October 11, 2018"
+output: word_document
+Submit : "Dr. Marco Montes de Oca"
+---
+
+The data set consists of list ot tables with column names:
+  date: consists of year and month starting Jan 2014 till Dec 2017
+  Network: consists network, A and B
+  DayPart: this columns has filters for days of week and timings
+  viewers: consists of number of viewers for a particular network and daypart every month starting Jan 2014
+  
+To start with first read the csv.
+
+```{r}
+tv_data <- read.csv("C:/Users/monis/Downloads/tv_data.csv")
+head(tv_data)
+summary(tv_data)
+
+```
+
+Next step is to make different tables based on the filters in network and daypart. Which will give us 22 tables.
+And store each table in a different variable.
+
+```{r}
+library(reshape2)
+all_tables <- split(x = tv_data, f = list(tv_data$network, tv_data$daypart))
+
+for (i in 1:length(all_tables)){
+  assign(paste("sub_table",i, sep =""),as.data.frame(all_tables[i]))
+}
+
+```
+
+Now we will make a function to analyse each time series and make prediction using HoltWinters
+
+```{r }
+library(forecast)
+
+timeseries_analysis <- function(dftable){
+  
+  tablename <- colnames(dftable)[4]
+  print(tablename)
+  
+  colnames(dftable)[4] <- "viewers"
+  # convert data frame into time series
+  ts_tvdata <- ts(dftable$viewers, start = c(2014, 01), frequency = 12) 
+  
+  #decompose time series and plot
+  decomp <- stl(ts_tvdata, s.window = 12) 
+  plot(decomp, main = tablename) 
+  
+  #split data into test(Jan 2017 till Dec 2017) and train(Jan 2014 till Dec 2016)
+  training_set<- window(ts_tvdata, start = c(2014, 01), end = c(2016, 12), frequency = 12) 
+  test_set <- window(ts_tvdata, start = c(2017, 01), end = c(2017, 12), frequency = 12)
+  
+  #plots Auto-correlation
+  acf(training_set)
+  
+  #plots partial auto-correlation
+  pacf(training_set)
+  
+  #fit HolyWinters on training set
+  fit = HoltWinters(training_set, beta = FALSE)
+  
+  #forecast values for next 12 months
+  fcast = forecast(fit, h = 12)
+  
+  #plot time series with the forecasted values
+  plot(fcast, main=tablename)
+  lines(test_set, col = "red")
+  
+  # Find all errors in both the time series including MAE
+  acc <- accuracy(fcast, test_set)
+  print(acc)
+  
+  #Finds mean absolute error
+  error <- fcast$mean - test_set
+  print(paste("The MAE is", round(mean(abs(error)), 3)))
+}
+
+
+```
+
+```{r}
+
+timeseries_analysis(sub_table1)
+timeseries_analysis(sub_table2)
+timeseries_analysis(sub_table3)
+timeseries_analysis(sub_table4)
+timeseries_analysis(sub_table5)
+timeseries_analysis(sub_table6)
+timeseries_analysis(sub_table7)
+timeseries_analysis(sub_table8)
+timeseries_analysis(sub_table9)
+timeseries_analysis(sub_table10)
+timeseries_analysis(sub_table11)
+timeseries_analysis(sub_table12)
+timeseries_analysis(sub_table13)
+timeseries_analysis(sub_table14)
+timeseries_analysis(sub_table15)
+timeseries_analysis(sub_table16)
+timeseries_analysis(sub_table17)
+timeseries_analysis(sub_table18)
+timeseries_analysis(sub_table19)
+#
+#
+#As all the observation in training set is Zero for Sub_table20, acf and pacf of training set cannot be found hence will throw an error
+#Moreover, when forecasted on the bases of training set, we will get predicted values as zero
+#timeseries_analysis(sub_table20) 
+#
+#
+
+timeseries_analysis(sub_table21)
+timeseries_analysis(sub_table22)
+
+```
+
+
+```{r}
+# sub_table19 
+# network == "A", daypart == "S,Su 6:00 AM - 8:00 AM"
+
+
+#sub_table19 #A
+
+print(head(sub_table19))
+colnames(sub_table19)[4] <- "viewers"
+ts_tvdata_A <- ts(sub_table19$viewers, start = c(2014, 01), frequency = 12)
+
+training_set_A<- window(ts_tvdata_A, start = c(2014, 01), end = c(2016, 12), frequency = 12)
+test_set_A <- window(ts_tvdata_A, start = c(2017, 01), end = c(2017, 12), frequency = 12)
+
+plot((diff(training_set_A)))
+acf(diff(training_set_A))
+pacf(diff(training_set_A))
+
+acf(training_set_A)
+pacf(training_set_A)
+
+#In ARIMA, (p,d,q) stands for non-seasonal component of time series while (P, D, Q) stands for seasonal component
+#From acf and pacf of the training model, we will get the AR and MA value
+#For d, when plotting the difference series one time, we will get the non-stationary series, ,therefore d = 1
+#
+#To find the optimal model, we need to have a close look at AIC and BIC. Best model is one with the least AIC, BIC value
+#
+fit_A <- Arima(training_set_A, order = c(1,1,1), seasonal = list(order = c(1,1,0), period = 12))
+fcast_A <- forecast(fit_A, h = 12)
+
+plot(fcast_A, main="A, Sat-Sun 6am -8am, Arima")
+lines(test_set_A, col = "red")
+
+#Finds mean absolute error
+error_model_A <- fcast_A$mean - test_set_A
+print(paste("The MAE for Arima model is", round(mean(abs(error_model_A/12)), 3)))
+
+#Auto Arima will try to find the best model with mminimum AIC
+autofit_A <- auto.arima(training_set_A,trace = TRUE)
+autofcast_auto_A <- forecast(autofit_A, h = 12)
+
+plot(autofcast_A, main="A, Sat-Sun 6am -8am, Auto-Arima ")
+lines(test_set_A, col = "red")
+
+error_model_auto_A <- autofcast_auto_A$mean - test_set_A
+print(paste("The MAE of auto arima is", round(mean(abs(error_model_auto_A/12)), 3)))
+
+```
+
+```{r}
+
+
+print(head(sub_table16))
+colnames(sub_table16)[4] <- "viewers"
+ts_tvdata_B <- ts(sub_table16$viewers, start = c(2014, 01), frequency = 12)
+
+training_set_B<- window(ts_tvdata_B, start = c(2014, 01), end = c(2016, 12), frequency = 12)
+test_set_B <- window(ts_tvdata_B, start = c(2017, 01), end = c(2017, 12), frequency = 12)
+
+
+plot((diff(training_set_B)))
+acf(diff(training_set_B))
+pacf(diff(training_set_B))
+
+acf(training_set_B)
+pacf(training_set_B)
+
+#Similarly as the above series, p,d,q is selected by looking into acf and pacf
+#P,D,Q which is the seasonal component with period of 12months, is found.
+#Different parameters of P D Q are tested to find the best model depending on AIC and BIC
+fit_B <- Arima(training_set_B, order = c(0,1,2), seasonal = list(order = c(1,1,1), period = 12))
+fcast_B <- forecast(fit_B, h = 12)
+
+plot(fcast_B, main="B, Mon-Sun 8pm - 11pm, Arima ")
+lines(test_set_B, col = "red")
+
+#Finds mean absolute error
+error_model_B <- fcast_B$mean - test_set_B
+print(paste("The MAE of B series arima is", round(mean(abs(error_model_B/12)), 3)))
+
+
+autofit_B <- auto.arima(training_set_B)
+autofcast_auto_B <- forecast(autofit_B, h = 12)
+
+plot(autofcast_auto_B, main="B, Mon-Sun 8pm - 11pm, Auto-Arima ")
+lines(test_set_B, col = "red")
+
+auto.arima(training_set_B, trace = TRUE)
+
+error_model_auto_B <- autofcast_auto_B$mean - test_set_B
+print(paste("The MAE for auto-arima is", round(mean(abs(error_model_auto_B/12)), 3)))
+
+```
