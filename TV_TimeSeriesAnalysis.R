@@ -2,8 +2,6 @@
 title: "Time Series Analysis on TV viewers Dataset"
 author: "Monisha Patel"
 date: "October 11, 2018"
-output: word_document
-Submit : "Dr. Marco Montes de Oca"
 ---
 
 The data set consists of list ot tables with column names:
@@ -15,7 +13,7 @@ The data set consists of list ot tables with column names:
 To start with first read the csv.
 
 ```{r}
-tv_data <- read.csv("C:/Users/monis/Downloads/tv_data.csv")
+tv_data <- read.csv("tv_data.csv")
 head(tv_data)
 summary(tv_data)
 
